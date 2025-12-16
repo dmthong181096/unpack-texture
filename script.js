@@ -25,6 +25,8 @@ class TextureUnpacker {
         this.resultsSection = document.getElementById('resultsSection');
         this.infoSection = document.getElementById('infoSection');
         this.atlasInfo = document.getElementById('atlasInfo');
+        this.reviewSection = document.getElementById('reviewSection');
+        this.reviewContent = document.getElementById('reviewContent');
     }
 
     bindEvents() {
@@ -136,6 +138,16 @@ class TextureUnpacker {
     updateUI() {
         this.unpackBtn.disabled = !this.plistFile || !this.imageFile;
         this.downloadBtn.disabled = this.processedSprites.length === 0;
+        
+        // Show review section when both files are selected
+        if (this.plistFile && this.imageFile) {
+            // Use setTimeout to ensure DOM is ready
+            setTimeout(() => {
+                this.showReview();
+            }, 100);
+        } else {
+            this.hideReview();
+        }
     }
 
 
@@ -178,7 +190,7 @@ class TextureUnpacker {
             
             this.displayAtlasInfo();
             this.displayResults();
-            this.createDebugVisualization(atlasImage);
+            // this.createDebugVisualization(atlasImage); // Hidden for production
             
         } catch (error) {
             console.error('Lỗi unpacking atlas:', error);
@@ -234,9 +246,9 @@ class TextureUnpacker {
             throw new Error('Invalid plist format - no main dict found');
         }
         
-        console.log('Parsing plist XML, main dict found');
+        // console.log('Parsing plist XML, main dict found');
         const keys = mainDict.querySelectorAll('key');
-        console.log(`Found ${keys.length} keys in main dict`);
+        // console.log(`Found ${keys.length} keys in main dict`);
         
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i];
@@ -245,9 +257,9 @@ class TextureUnpacker {
             
             if (keyName === 'frames' && nextElement && nextElement.tagName === 'dict') {
                 // Parse frames
-                console.log('Found frames section');
+                // console.log('Found frames section');
                 const frameKeys = nextElement.querySelectorAll('key');
-                console.log(`Found ${frameKeys.length} frame keys`);
+                // console.log(`Found ${frameKeys.length} frame keys`);
                 
                 for (let j = 0; j < frameKeys.length; j++) {
                     const frameKey = frameKeys[j];
@@ -255,9 +267,9 @@ class TextureUnpacker {
                     const frameDict = frameKey.nextElementSibling;
                     
                     if (frameDict && frameDict.tagName === 'dict') {
-                        console.log(`Parsing frame: ${frameName}`);
+                        // console.log(`Parsing frame: ${frameName}`);
                         frames[frameName] = this.parseFrameDict(frameDict);
-                        console.log(`Frame data for ${frameName}:`, frames[frameName]);
+                        // console.log(`Frame data for ${frameName}:`, frames[frameName]);
                     }
                 }
             } else if (keyName === 'metadata' && nextElement && nextElement.tagName === 'dict') {
@@ -288,17 +300,17 @@ class TextureUnpacker {
                 size: data.meta?.size ? `{${data.meta.size.w},${data.meta.size.h}}` : 'unknown'
             };
 
-            console.log('Parsing Unity TPSheet format');
-            console.log('TPSheet data:', data);
+            // console.log('Parsing Unity TPSheet format');
+            // console.log('TPSheet data:', data);
 
             // Parse frames from Unity format
             if (data.frames) {
                 const frameKeys = Object.keys(data.frames);
-                console.log(`Found ${frameKeys.length} frames in TPSheet`);
+                // console.log(`Found ${frameKeys.length} frames in TPSheet`);
 
                 frameKeys.forEach(frameName => {
                     const frameData = data.frames[frameName];
-                    console.log(`Parsing TPSheet frame: ${frameName}`, frameData);
+                    // console.log(`Parsing TPSheet frame: ${frameName}`, frameData);
 
                     frames[frameName] = {
                         frame: {
@@ -339,8 +351,8 @@ class TextureUnpacker {
                 size: 'unknown'
             };
 
-            console.log('Parsing Unity TPSheet text format');
-            console.log('Lines to process:', lines.length);
+            // console.log('Parsing Unity TPSheet text format');
+            // console.log('Lines to process:', lines.length);
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -364,12 +376,12 @@ class TextureUnpacker {
                     const sprite = this.parseTPSheetSpriteLine(line);
                     if (sprite) {
                         frames[sprite.name] = sprite.data;
-                        console.log(`Parsed TPSheet sprite: ${sprite.name}`, sprite.data);
+                        // console.log(`Parsed TPSheet sprite: ${sprite.name}`, sprite.data);
                     }
                 }
             }
 
-            console.log(`Parsed ${Object.keys(frames).length} sprites from TPSheet`);
+            // console.log(`Parsed ${Object.keys(frames).length} sprites from TPSheet`);
             return { frames, metadata };
         } catch (error) {
             throw new Error('Invalid TPSheet text format: ' + error.message);
@@ -378,9 +390,9 @@ class TextureUnpacker {
 
     parseTPSheetSpriteLine(line) {
         try {
-            console.log('Parsing TPSheet line:', line);
+            // console.log('Parsing TPSheet line:', line);
             const parts = line.split(';').map(p => p.trim());
-            console.log('Split parts:', parts);
+            // console.log('Split parts:', parts);
             
             if (parts.length < 5) {
                 console.warn('Invalid TPSheet line format:', line);
@@ -398,8 +410,8 @@ class TextureUnpacker {
             // The debug visualization shows correct rectangles, but extraction is wrong
             // This means the vertex parsing is working for visualization but not for extraction
             
-            console.log(`Full line for sprite ${name}:`, line);
-            console.log(`All parts:`, parts);
+            // console.log(`Full line for sprite ${name}:`, line);
+            // console.log(`All parts:`, parts);
             
             let x, y, width, height;
             
@@ -416,7 +428,7 @@ class TextureUnpacker {
                 width = parseInt(parts[3]) || 0;
                 height = parseInt(parts[4]) || 0;
                 
-                console.log(`Sprite ${name} - x,y,w,h: x=${x}, y=${y}, w=${width}, h=${height}`);
+                // console.log(`Sprite ${name} - x,y,w,h: x=${x}, y=${y}, w=${width}, h=${height}`);
                 
                 // But I need to correct the mapping based on what I see:
                 // The debug shows rectangles in correct positions, but extraction is different
@@ -432,7 +444,7 @@ class TextureUnpacker {
                 const originalY = y;
                 y = 0; // Force all sprites to start from top
                 
-                console.log(`ADJUSTED coordinates for ${name}: x=${x}, y=${y} (was ${originalY}), w=${width}, h=${height}`);
+                // console.log(`ADJUSTED coordinates for ${name}: x=${x}, y=${y} (was ${originalY}), w=${width}, h=${height}`);
                 
                 console.log(`CORRECTED coordinates for ${name}: x=${x}, y=${y}, w=${width}, h=${height}`);
                 
@@ -457,7 +469,7 @@ class TextureUnpacker {
                 pivotY = parseFloat(parts[6]) || 0.5;
             }
             
-            console.log(`Sprite ${name} - Pivot: ${pivotX}, ${pivotY}`);
+            // console.log(`Sprite ${name} - Pivot: ${pivotX}, ${pivotY}`);
 
             return {
                 name: name,
@@ -662,9 +674,9 @@ class TextureUnpacker {
         
         const frame = frameData.frame;
         
-        console.log(`Extracting sprite ${name}:`);
-        console.log(`  Atlas image size: ${atlasImage.width} x ${atlasImage.height}`);
-        console.log(`  Frame from data: x=${frame.x}, y=${frame.y}, w=${frame.width}, h=${frame.height}`);
+        // console.log(`Extracting sprite ${name}:`);
+        // console.log(`  Atlas image size: ${atlasImage.width} x ${atlasImage.height}`);
+        // console.log(`  Frame from data: x=${frame.x}, y=${frame.y}, w=${frame.width}, h=${frame.height}`);
         
         // Validate frame dimensions
         if (!frame.width || !frame.height || frame.width <= 0 || frame.height <= 0) {
@@ -701,7 +713,7 @@ class TextureUnpacker {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // Draw sprite from atlas
-        console.log(`Drawing sprite ${name} - rotated: ${frameData.rotated}`);
+        // console.log(`Drawing sprite ${name} - rotated: ${frameData.rotated}`);
         
         // Disable Y-flip for now to avoid confusion
         // if (sourceY + sourceH > atlasImage.height) {
@@ -742,11 +754,11 @@ class TextureUnpacker {
         sourceW = Math.max(1, sourceW);
         sourceH = Math.max(1, sourceH);
         
-        console.log(`Final coordinates: x=${sourceX}, y=${sourceY}, w=${sourceW}, h=${sourceH}`);
+        // console.log(`Final coordinates: x=${sourceX}, y=${sourceY}, w=${sourceW}, h=${sourceH}`);
         
         if (frameData.rotated) {
             // Handle rotated sprites - Unity format rotates 90 degrees clockwise
-            console.log(`Drawing rotated sprite`);
+            // console.log(`Drawing rotated sprite`);
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.rotate(Math.PI / 2); // 90 degrees clockwise for Unity
@@ -758,7 +770,7 @@ class TextureUnpacker {
             ctx.restore();
         } else {
             // Normal sprites - draw to fill the entire canvas
-            console.log(`Drawing normal sprite from (${sourceX}, ${sourceY}) size ${sourceW}x${sourceH} to canvas ${canvas.width}x${canvas.height}`);
+            // console.log(`Drawing normal sprite from (${sourceX}, ${sourceY}) size ${sourceW}x${sourceH} to canvas ${canvas.width}x${canvas.height}`);
             ctx.drawImage(
                 atlasImage,
                 sourceX, sourceY, sourceW, sourceH,
@@ -883,12 +895,57 @@ class TextureUnpacker {
 
         this.showProgress();
         
-        for (let i = 0; i < this.processedSprites.length; i++) {
-            const progress = ((i + 1) / this.processedSprites.length) * 100;
-            this.updateProgress(progress, `Tải xuống: ${this.processedSprites[i].name}`);
+        try {
+            // Create ZIP file
+            const zip = new JSZip();
             
-            await this.downloadSingle(i);
-            await this.delay(200); // Small delay between downloads
+            for (let i = 0; i < this.processedSprites.length; i++) {
+                const sprite = this.processedSprites[i];
+                const progress = ((i + 1) / this.processedSprites.length) * 80; // Reserve 20% for ZIP generation
+                
+                this.updateProgress(progress, `Đang thêm vào ZIP: ${sprite.name}`);
+                
+                if (!sprite.error && sprite.dataUrl) {
+                    // Convert dataURL to blob
+                    const response = await fetch(sprite.dataUrl);
+                    const blob = await response.blob();
+                    
+                    // Clean filename - remove extension and add .png
+                    const cleanName = sprite.name.replace(/\.[^/.]+$/, "");
+                    const fileName = `${cleanName}.png`;
+                    
+                    // Add to ZIP
+                    zip.file(fileName, blob);
+                }
+                
+                await this.delay(50);
+            }
+            
+            this.updateProgress(90, 'Đang tạo file ZIP...');
+            
+            // Generate ZIP file
+            const zipBlob = await zip.generateAsync({
+                type: "blob",
+                compression: "DEFLATE",
+                compressionOptions: {
+                    level: 6
+                }
+            });
+            
+            this.updateProgress(100, 'Hoàn thành!');
+            
+            // Download ZIP file
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(zipBlob);
+            link.download = `sprites_${Date.now()}.zip`;
+            link.click();
+            
+            // Clean up
+            URL.revokeObjectURL(link.href);
+            
+        } catch (error) {
+            console.error('Error creating ZIP:', error);
+            alert('Lỗi tạo file ZIP: ' + error.message);
         }
         
         this.hideProgress();
@@ -910,6 +967,7 @@ class TextureUnpacker {
         this.imageStatus.classList.remove('success');
         
         this.infoSection.style.display = 'none';
+        this.hideReview();
         
         this.updateUI();
     }
@@ -936,7 +994,7 @@ class TextureUnpacker {
             const frameData = this.atlasData.frames[spriteName];
             const frame = frameData.frame;
             
-            console.log(`Debug visualization - Sprite ${spriteName}: x=${frame.x}, y=${frame.y}, w=${frame.width}, h=${frame.height}`);
+            // console.log(`Debug visualization - Sprite ${spriteName}: x=${frame.x}, y=${frame.y}, w=${frame.width}, h=${frame.height}`);
             
             // Draw rectangle for each sprite
             const x = frame.x * scaleX;
@@ -962,6 +1020,193 @@ class TextureUnpacker {
         debugSection.style.borderRadius = '8px';
         
         this.resultsSection.appendChild(debugSection);
+    }
+
+    async showReview() {
+        if (!this.plistFile || !this.imageFile) return;
+        
+        try {
+            // Show loading state first
+            this.reviewContent.innerHTML = `
+                <div class="review-preview">
+                    <h5>🔍 Preview Atlas với Sprite Boundaries</h5>
+                    <div class="preview-container">
+                        <div class="loading-preview">Đang tạo preview...</div>
+                    </div>
+                </div>
+            `;
+            this.reviewSection.style.display = 'block';
+            
+            // Parse atlas data to get sprite info
+            const atlasData = await this.parsePlistFile(this.plistFile);
+            const atlasImage = await this.loadImage(this.imageFile);
+            
+            // Wait a bit more to ensure image is fully loaded
+            await this.delay(200);
+            
+            // Create preview canvas after everything is loaded
+            const previewCanvas = this.createPreviewCanvas(atlasImage, atlasData);
+            
+            const spriteCount = Object.keys(atlasData.frames).length;
+            const plistExt = this.plistFile.name.toLowerCase().substring(this.plistFile.name.lastIndexOf('.'));
+            
+            // Determine format
+            let format = 'Unknown';
+            if (plistExt === '.tpsheet') {
+                format = 'Unity TexturePacker (Text)';
+            } else if (plistExt === '.json') {
+                format = 'Unity TexturePacker (JSON)';
+            } else if (plistExt === '.plist' || plistExt === '.xml') {
+                format = 'Cocos Creator';
+            }
+            
+            // Update with actual preview
+            this.reviewContent.innerHTML = `
+                <div class="review-preview">
+                    <h5>🔍 Preview Atlas với Sprite Boundaries</h5>
+                    <div class="preview-container" id="previewContainer">
+                        <!-- Canvas will be inserted here -->
+                    </div>
+                    <div class="preview-info">
+                        <div class="preview-stat">
+                            <span class="stat-label">Số sprites:</span>
+                            <span class="stat-value">${spriteCount}</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-label">Atlas size:</span>
+                            <span class="stat-value">${atlasImage.width} x ${atlasImage.height}</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="stat-label">Format:</span>
+                            <span class="stat-value">${format}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Insert canvas into DOM
+            const previewContainer = document.getElementById('previewContainer');
+            previewContainer.appendChild(previewCanvas);
+            
+        } catch (error) {
+            console.error('Error creating review:', error);
+            // Fallback to simple file info if preview fails
+            this.showSimpleReview();
+        }
+    }
+    
+    createPreviewCanvas(atlasImage, atlasData) {
+        const canvas = document.createElement('canvas');
+        const maxWidth = 600;
+        const maxHeight = 400;
+        
+        // Calculate scale to fit preview area
+        const scaleX = maxWidth / atlasImage.width;
+        const scaleY = maxHeight / atlasImage.height;
+        const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
+        
+        canvas.width = atlasImage.width * scale;
+        canvas.height = atlasImage.height * scale;
+        canvas.className = 'preview-canvas';
+        
+        const ctx = canvas.getContext('2d');
+        
+        // console.log('Creating preview canvas:', {
+        //     originalSize: `${atlasImage.width}x${atlasImage.height}`,
+        //     canvasSize: `${canvas.width}x${canvas.height}`,
+        //     scale: scale,
+        //     imageComplete: atlasImage.complete,
+        //     naturalHeight: atlasImage.naturalHeight
+        // });
+        
+        // Always try to draw the image
+        try {
+            // Draw the atlas image scaled down
+            ctx.drawImage(atlasImage, 0, 0, canvas.width, canvas.height);
+            // console.log('Atlas image drawn successfully');
+            
+            // Draw sprite boundaries
+            ctx.strokeStyle = '#ff4444';
+            ctx.lineWidth = 2;
+            ctx.font = '12px Arial';
+            
+            let drawnSprites = 0;
+            Object.keys(atlasData.frames).forEach((spriteName, index) => {
+                const frameData = atlasData.frames[spriteName];
+                const frame = frameData.frame;
+                
+                // Use original coordinates for preview (not Y=0 adjustment)
+                let x = frame.x * scale;
+                let y = frame.y * scale;
+                let w = frame.width * scale;
+                let h = frame.height * scale;
+                
+                // console.log(`Drawing sprite ${spriteName}:`, { x, y, w, h });
+                
+                // Draw rectangle
+                ctx.strokeRect(x, y, w, h);
+                
+                // Draw sprite name with background for better visibility
+                const textWidth = ctx.measureText(spriteName).width;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(x, y - 16, textWidth + 6, 16);
+                ctx.fillStyle = '#ffff00';
+                ctx.fillText(spriteName, x + 3, y - 4);
+                
+                drawnSprites++;
+            });
+            
+            // console.log(`Drew ${drawnSprites} sprite boundaries`);
+            
+        } catch (error) {
+            console.error('Error drawing preview:', error);
+            // Fallback: draw a placeholder
+            ctx.fillStyle = '#f0f0f0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#666';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Error loading preview', canvas.width / 2, canvas.height / 2);
+        }
+        
+        return canvas;
+    }
+    
+    showSimpleReview() {
+        const plistExt = this.plistFile.name.toLowerCase().substring(this.plistFile.name.lastIndexOf('.'));
+        
+        let format = 'Unknown';
+        if (plistExt === '.tpsheet') {
+            format = 'Unity TexturePacker (Text)';
+        } else if (plistExt === '.json') {
+            format = 'Unity TexturePacker (JSON)';
+        } else if (plistExt === '.plist' || plistExt === '.xml') {
+            format = 'Cocos Creator';
+        }
+        
+        this.reviewContent.innerHTML = `
+            <div class="review-item">
+                <h5>📄 Files Ready</h5>
+                <div class="review-detail">
+                    <span class="review-label">Atlas:</span>
+                    <span class="review-value">${this.plistFile.name}</span>
+                </div>
+                <div class="review-detail">
+                    <span class="review-label">Image:</span>
+                    <span class="review-value">${this.imageFile.name}</span>
+                </div>
+                <div class="review-detail">
+                    <span class="review-label">Format:</span>
+                    <span class="review-value">${format}</span>
+                </div>
+            </div>
+        `;
+        
+        this.reviewSection.style.display = 'block';
+    }
+    
+    hideReview() {
+        this.reviewSection.style.display = 'none';
     }
 
     delay(ms) {
