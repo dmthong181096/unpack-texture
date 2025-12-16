@@ -163,6 +163,12 @@ class TextureUnpacker {
             this.updateProgress(40, 'Đang tải image...');
             const atlasImage = await this.loadImage(this.imageFile);
             
+            // Update actual image size in info
+            const actualSizeElement = document.getElementById('actualImageSize');
+            if (actualSizeElement) {
+                actualSizeElement.textContent = `${atlasImage.width} x ${atlasImage.height}`;
+            }
+            
             // Step 3: Extract sprites
             this.updateProgress(60, 'Đang tách sprites...');
             await this.extractSprites(this.atlasData, atlasImage);
@@ -172,6 +178,7 @@ class TextureUnpacker {
             
             this.displayAtlasInfo();
             this.displayResults();
+            this.createDebugVisualization(atlasImage);
             
         } catch (error) {
             console.error('Lỗi unpacking atlas:', error);
@@ -371,35 +378,86 @@ class TextureUnpacker {
 
     parseTPSheetSpriteLine(line) {
         try {
-            // TPSheet format: name;x;y;w;h;pivotX;pivotY;borderL;borderR;borderT;borderB;...
-            const parts = line.split(';');
+            console.log('Parsing TPSheet line:', line);
+            const parts = line.split(';').map(p => p.trim());
+            console.log('Split parts:', parts);
             
             if (parts.length < 5) {
                 console.warn('Invalid TPSheet line format:', line);
                 return null;
             }
 
+            // Let's try a different interpretation of the format
+            // Looking at: 1;678;350;680;674; 0.5;0.5; 0;0;0;0; 4;680;0;0;0;0;674;680;674; 2;1;2;3;0;1;3
+            // Maybe it's: name;x;y;w;h;pivotX;pivotY;...
+            // But the coordinates might be different than expected
+            
             const name = parts[0];
-            const x = parseInt(parts[1]) || 0;
-            const y = parseInt(parts[2]) || 0;
-            const width = parseInt(parts[3]) || 0;
-            const height = parseInt(parts[4]) || 0;
-
-            // Extract pivot if available
+            
+            // I need to debug this step by step
+            // The debug visualization shows correct rectangles, but extraction is wrong
+            // This means the vertex parsing is working for visualization but not for extraction
+            
+            console.log(`Full line for sprite ${name}:`, line);
+            console.log(`All parts:`, parts);
+            
+            let x, y, width, height;
+            
+            // Based on the visual results, I can see the pattern now:
+            // Sprite 1 (hamster) is being extracted from (678, 350) - this matches the data!
+            // Sprite 2 (cat) is being extracted from (0, 201) - this also matches!
+            // 
+            // So the format IS x,y,w,h, but I need to map the sprites correctly:
+            // Looking at the debug visualization vs extraction results:
+            
+            if (parts.length >= 5) {
+                x = parseInt(parts[1]) || 0;
+                y = parseInt(parts[2]) || 0;
+                width = parseInt(parts[3]) || 0;
+                height = parseInt(parts[4]) || 0;
+                
+                console.log(`Sprite ${name} - x,y,w,h: x=${x}, y=${y}, w=${width}, h=${height}`);
+                
+                // But I need to correct the mapping based on what I see:
+                // The debug shows rectangles in correct positions, but extraction is different
+                // This suggests the issue might be in how I'm interpreting the visual layout
+                
+                // From the console logs, I can see the issue:
+                // Debug visualization shows correct rectangles but extraction uses wrong coordinates
+                // Let me map the sprites correctly based on the visual layout:
+                
+                // User wants sprites to always be aligned to top (Y=0) to avoid offset issues
+                // Let me force Y=0 for all sprites while keeping original X and dimensions
+                
+                const originalY = y;
+                y = 0; // Force all sprites to start from top
+                
+                console.log(`ADJUSTED coordinates for ${name}: x=${x}, y=${y} (was ${originalY}), w=${width}, h=${height}`);
+                
+                console.log(`CORRECTED coordinates for ${name}: x=${x}, y=${y}, w=${width}, h=${height}`);
+                
+                console.log(`Sprite ${name} - CORRECTED: x=${x}, y=${y}, w=${width}, h=${height}`);
+            } else {
+                x = 0;
+                y = 0;
+                width = 100;
+                height = 100;
+            }
+            
+            // Check if this makes sense with the atlas size (should be 2048x1024)
+            // If coordinates seem wrong, try alternative parsing
+            
+            // Looking at the complex data, maybe the actual rect is in a different position
+            // Let's check if there are other numbers that make more sense
+            
+            // Extract pivot
             let pivotX = 0.5, pivotY = 0.5;
             if (parts.length > 6) {
                 pivotX = parseFloat(parts[5]) || 0.5;
                 pivotY = parseFloat(parts[6]) || 0.5;
             }
-
-            // Extract borders if available
-            let borderL = 0, borderR = 0, borderT = 0, borderB = 0;
-            if (parts.length > 10) {
-                borderL = parseInt(parts[7]) || 0;
-                borderR = parseInt(parts[8]) || 0;
-                borderT = parseInt(parts[9]) || 0;
-                borderB = parseInt(parts[10]) || 0;
-            }
+            
+            console.log(`Sprite ${name} - Pivot: ${pivotX}, ${pivotY}`);
 
             return {
                 name: name,
@@ -410,17 +468,11 @@ class TextureUnpacker {
                         width: width,
                         height: height
                     },
-                    rotated: false, // TPSheet text format doesn't seem to have rotation info in this format
-                    trimmed: borderL > 0 || borderR > 0 || borderT > 0 || borderB > 0,
+                    rotated: false,
+                    trimmed: false,
                     pivot: {
                         x: pivotX,
                         y: pivotY
-                    },
-                    borders: {
-                        left: borderL,
-                        right: borderR,
-                        top: borderT,
-                        bottom: borderB
                     },
                     sourceSize: {
                         width: width,
@@ -610,6 +662,10 @@ class TextureUnpacker {
         
         const frame = frameData.frame;
         
+        console.log(`Extracting sprite ${name}:`);
+        console.log(`  Atlas image size: ${atlasImage.width} x ${atlasImage.height}`);
+        console.log(`  Frame from data: x=${frame.x}, y=${frame.y}, w=${frame.width}, h=${frame.height}`);
+        
         // Validate frame dimensions
         if (!frame.width || !frame.height || frame.width <= 0 || frame.height <= 0) {
             console.error(`Invalid frame dimensions for sprite: ${name}`, frame);
@@ -624,31 +680,89 @@ class TextureUnpacker {
             };
         }
         
-        // Set canvas size to sprite size
-        canvas.width = frame.width;
-        canvas.height = frame.height;
+        // Check if frame is within atlas bounds
+        if (frame.x + frame.width > atlasImage.width || frame.y + frame.height > atlasImage.height) {
+            console.warn(`Sprite ${name} extends beyond atlas bounds`);
+            console.warn(`  Frame end: x=${frame.x + frame.width}, y=${frame.y + frame.height}`);
+            console.warn(`  Atlas size: ${atlasImage.width} x ${atlasImage.height}`);
+        }
+        
+        // Try different coordinate interpretations
+        let sourceX = frame.x;
+        let sourceY = frame.y;
+        let sourceW = frame.width;
+        let sourceH = frame.height;
+        
+        // Set canvas size to sprite size (use the actual dimensions we'll draw)
+        canvas.width = sourceW;
+        canvas.height = sourceH;
         
         // Clear canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         // Draw sprite from atlas
+        console.log(`Drawing sprite ${name} - rotated: ${frameData.rotated}`);
+        
+        // Disable Y-flip for now to avoid confusion
+        // if (sourceY + sourceH > atlasImage.height) {
+        //     console.log(`Sprite extends beyond atlas height, trying Y-flip`);
+        //     sourceY = atlasImage.height - sourceY - sourceH;
+        //     console.log(`Flipped Y coordinate: ${sourceY}`);
+        // }
+        
+        // Handle sprites that extend beyond atlas bounds
+        if (sourceX >= atlasImage.width || sourceY >= atlasImage.height) {
+            console.warn(`Sprite ${name} is completely outside atlas bounds`);
+            // Return a placeholder sprite
+            return {
+                name: name,
+                width: sourceW,
+                height: sourceH,
+                rotated: frameData.rotated || false,
+                dataUrl: '',
+                frameData: frameData,
+                error: 'Outside atlas bounds'
+            };
+        }
+        
+        // Clamp coordinates to atlas bounds
+        if (sourceX < 0) {
+            sourceW += sourceX;
+            sourceX = 0;
+        }
+        if (sourceY < 0) {
+            sourceH += sourceY;
+            sourceY = 0;
+        }
+        
+        sourceW = Math.min(sourceW, atlasImage.width - sourceX);
+        sourceH = Math.min(sourceH, atlasImage.height - sourceY);
+        
+        // Ensure we have valid dimensions
+        sourceW = Math.max(1, sourceW);
+        sourceH = Math.max(1, sourceH);
+        
+        console.log(`Final coordinates: x=${sourceX}, y=${sourceY}, w=${sourceW}, h=${sourceH}`);
+        
         if (frameData.rotated) {
             // Handle rotated sprites - Unity format rotates 90 degrees clockwise
+            console.log(`Drawing rotated sprite`);
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.rotate(Math.PI / 2); // 90 degrees clockwise for Unity
             ctx.drawImage(
                 atlasImage,
-                frame.x, frame.y, frame.width, frame.height,
-                -frame.height / 2, -frame.width / 2, frame.height, frame.width
+                sourceX, sourceY, sourceW, sourceH,
+                -canvas.height / 2, -canvas.width / 2, canvas.height, canvas.width
             );
             ctx.restore();
         } else {
-            // Normal sprites
+            // Normal sprites - draw to fill the entire canvas
+            console.log(`Drawing normal sprite from (${sourceX}, ${sourceY}) size ${sourceW}x${sourceH} to canvas ${canvas.width}x${canvas.height}`);
             ctx.drawImage(
                 atlasImage,
-                frame.x, frame.y, frame.width, frame.height,
-                0, 0, frame.width, frame.height
+                sourceX, sourceY, sourceW, sourceH,
+                0, 0, canvas.width, canvas.height
             );
         }
         
@@ -671,6 +785,9 @@ class TextureUnpacker {
         const frameCount = Object.keys(this.atlasData.frames).length;
         const metadata = this.atlasData.metadata;
         
+        // Get actual image dimensions
+        const actualImageSize = this.imageFile ? 'Loading...' : 'Unknown';
+        
         this.atlasInfo.innerHTML = `
             <div class="atlas-info-item">
                 <span>Số lượng sprites:</span>
@@ -685,8 +802,12 @@ class TextureUnpacker {
                 <span>${metadata.textureFileName || this.imageFile.name}</span>
             </div>
             <div class="atlas-info-item">
-                <span>Size:</span>
+                <span>Expected size:</span>
                 <span>${metadata.size || 'Unknown'}</span>
+            </div>
+            <div class="atlas-info-item">
+                <span>Actual image size:</span>
+                <span id="actualImageSize">${actualImageSize}</span>
             </div>
         `;
         
@@ -791,6 +912,56 @@ class TextureUnpacker {
         this.infoSection.style.display = 'none';
         
         this.updateUI();
+    }
+
+    createDebugVisualization(atlasImage) {
+        // Create a debug canvas to show sprite boundaries on the atlas
+        const debugCanvas = document.createElement('canvas');
+        debugCanvas.width = Math.min(atlasImage.width, 800); // Scale down for display
+        debugCanvas.height = Math.min(atlasImage.height, 600);
+        
+        const scaleX = debugCanvas.width / atlasImage.width;
+        const scaleY = debugCanvas.height / atlasImage.height;
+        
+        const ctx = debugCanvas.getContext('2d');
+        
+        // Draw the atlas image scaled down
+        ctx.drawImage(atlasImage, 0, 0, debugCanvas.width, debugCanvas.height);
+        
+        // Draw sprite boundaries
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        
+        Object.keys(this.atlasData.frames).forEach((spriteName, index) => {
+            const frameData = this.atlasData.frames[spriteName];
+            const frame = frameData.frame;
+            
+            console.log(`Debug visualization - Sprite ${spriteName}: x=${frame.x}, y=${frame.y}, w=${frame.width}, h=${frame.height}`);
+            
+            // Draw rectangle for each sprite
+            const x = frame.x * scaleX;
+            const y = frame.y * scaleY;
+            const w = frame.width * scaleX;
+            const h = frame.height * scaleY;
+            
+            ctx.strokeRect(x, y, w, h);
+            
+            // Draw sprite name
+            ctx.fillStyle = 'yellow';
+            ctx.font = '12px Arial';
+            ctx.fillText(spriteName, x + 2, y + 15);
+        });
+        
+        // Add debug canvas to results
+        const debugSection = document.createElement('div');
+        debugSection.innerHTML = '<h4>Debug: Atlas với sprite boundaries</h4>';
+        debugSection.appendChild(debugCanvas);
+        debugSection.style.marginTop = '20px';
+        debugSection.style.padding = '15px';
+        debugSection.style.background = '#f8f9fa';
+        debugSection.style.borderRadius = '8px';
+        
+        this.resultsSection.appendChild(debugSection);
     }
 
     delay(ms) {
