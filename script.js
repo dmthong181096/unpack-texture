@@ -1,3 +1,13 @@
+/**
+ * Texture Unpacker - Sprite Atlas Extraction Tool
+ * 
+ * Author: dmthong181096
+ * GitHub: https://github.com/dmthong181096/unpack-texture
+ * 
+ * Open Source Project - MIT License
+ * Supports Unity TexturePacker (.tpsheet, .json) and Cocos Creator (.plist, .xml)
+ */
+
 class TextureUnpacker {
     constructor() {
         this.plistFile = null;

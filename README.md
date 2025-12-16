@@ -2,6 +2,10 @@
 
 Một công cụ web để giải nén Sprite Atlas từ file .plist và texture image, phổ biến trong game development (Cocos2d, Unity, etc.).
 
+**Tác giả:** dmthong181096  
+**GitHub:** https://github.com/dmthong181096/unpack-texture  
+**License:** MIT
+
 ## ✨ Tính năng
 
 - **Dual File Input**: Upload cả file .plist và texture image
@@ -73,4 +77,27 @@ texture-unpacker/
 
 ## 🤝 Đóng góp
 
-Feel free to submit issues và pull requests để cải thiện tool!
+Đây là một dự án open source! Chúng tôi hoan nghênh mọi đóng góp:
+
+- 🐛 **Bug reports**: Tạo issue trên GitHub
+- 💡 **Feature requests**: Đề xuất tính năng mới
+- 🔧 **Pull requests**: Cải thiện code
+- 📖 **Documentation**: Cải thiện tài liệu
+- ⭐ **Star the repo**: Ủng hộ dự án
+
+### Cách đóng góp:
+1. Fork repository
+2. Tạo feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Tạo Pull Request
+
+## 📄 License
+
+Dự án này được phát hành dưới [MIT License](LICENSE).
+
+## 👨‍💻 Tác giả
+
+**dmthong181096**
+- GitHub: [@dmthong181096](https://github.com/dmthong181096)
+- Project: [unpack-texture](https://github.com/dmthong181096/unpack-texture)
